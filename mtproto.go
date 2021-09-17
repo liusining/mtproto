@@ -16,6 +16,7 @@ import (
 	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 	"github.com/xelaj/errs"
+	"golang.org/x/net/proxy"
 
 	"github.com/xelaj/mtproto/internal/encoding/tl"
 	"github.com/xelaj/mtproto/internal/mode"
@@ -29,6 +30,7 @@ import (
 type MTProto struct {
 	addr         string
 	transport    transport.Transport
+	proxyDialer  proxy.Dialer
 	stopRoutines context.CancelFunc // stopping ping, read, etc. routines
 	routineswg   sync.WaitGroup     // WaitGroup for being sure that all routines are stopped
 
@@ -86,8 +88,9 @@ type Config struct {
 	// if SessionStorage is nil, AuthKeyFile is required, otherwise it will be ignored
 	SessionStorage session.SessionLoader
 
-	ServerHost string
-	PublicKey  *rsa.PublicKey
+	ServerHost  string
+	ProxyDialer proxy.Dialer
+	PublicKey   *rsa.PublicKey
 }
 
 func NewMTProto(c Config) (*MTProto, error) {
@@ -109,6 +112,7 @@ func NewMTProto(c Config) (*MTProto, error) {
 	m := &MTProto{
 		tokensStorage:         c.SessionStorage,
 		addr:                  c.ServerHost,
+		proxyDialer:           c.ProxyDialer,
 		encrypted:             s != nil, // if not nil, then it's already encrypted, otherwise makes no sense
 		sessionId:             utils.GenerateSessionID(),
 		serviceChannel:        make(chan tl.Object),
@@ -168,9 +172,10 @@ func (m *MTProto) connect(ctx context.Context) error {
 	m.transport, err = transport.NewTransport(
 		m,
 		transport.TCPConnConfig{
-			Ctx:     ctx,
-			Host:    m.addr,
-			Timeout: defaultTimeout,
+			Ctx:         ctx,
+			Host:        m.addr,
+			ProxyDialer: m.proxyDialer,
+			Timeout:     defaultTimeout,
 		},
 		mode.Intermediate,
 	)

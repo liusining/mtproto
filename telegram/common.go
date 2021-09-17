@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/xelaj/errs"
 	dry "github.com/xelaj/go-dry"
+	"golang.org/x/net/proxy"
 
 	"github.com/xelaj/mtproto"
 	"github.com/xelaj/mtproto/internal/keys"
@@ -28,6 +29,7 @@ type Client struct {
 type ClientConfig struct {
 	SessionFile     string
 	ServerHost      string
+	ProxyDialer     proxy.Dialer
 	PublicKeysFile  string
 	DeviceModel     string
 	SystemVersion   string
@@ -72,6 +74,7 @@ func NewClient(c ClientConfig) (*Client, error) { //nolint: gocritic arg is not 
 	m, err := mtproto.NewMTProto(mtproto.Config{
 		AuthKeyFile: c.SessionFile,
 		ServerHost:  c.ServerHost,
+		ProxyDialer: c.ProxyDialer,
 		PublicKey:   publicKeys[0],
 	})
 	if err != nil {

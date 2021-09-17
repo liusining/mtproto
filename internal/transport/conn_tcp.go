@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/xelaj/go-dry/ioutil"
+	"golang.org/x/net/proxy"
 )
 
 type tcpConn struct {
@@ -17,9 +18,10 @@ type tcpConn struct {
 }
 
 type TCPConnConfig struct {
-	Ctx     context.Context
-	Host    string
-	Timeout time.Duration
+	Ctx         context.Context
+	Host        string
+	ProxyDialer proxy.Dialer
+	Timeout     time.Duration
 }
 
 func NewTCP(cfg TCPConnConfig) (Conn, error) {
@@ -27,9 +29,19 @@ func NewTCP(cfg TCPConnConfig) (Conn, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "resolving tcp")
 	}
-	conn, err := net.DialTCP("tcp", nil, tcpAddr)
-	if err != nil {
-		return nil, errors.Wrap(err, "dialing tcp")
+	var conn *net.TCPConn
+	if cfg.ProxyDialer != nil {
+		c, err := cfg.ProxyDialer.Dial("tcp", tcpAddr.String())
+		if err != nil {
+			return nil, errors.Wrap(err, "dialing tcp with proxy")
+		}
+		conn = c.(*net.TCPConn)
+	} else {
+		c, err := net.DialTCP("tcp", nil, tcpAddr)
+		if err != nil {
+			return nil, errors.Wrap(err, "dialing tcp")
+		}
+		conn = c
 	}
 
 	return &tcpConn{
