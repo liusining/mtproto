@@ -35,6 +35,8 @@ func main() {
 		SessionFile: sessionFile,
 		// host address of mtproto server. Actually, it can be any mtproxy, not only official
 		ServerHost: "149.154.167.50:443",
+		// proxy dialer, such as proxy.SOCKS5
+		ProxyDialer: nil,
 		// public keys file is path to file with public keys, which you must get from https://my.telegram.org
 		PublicKeysFile:  publicKeys,
 		AppID:           94575,                              // app id, could be find at https://my.telegram.org
